@@ -288,6 +288,8 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
             }
 
             $commands[] = $this->toLog('"start '.$this->getDate().' '.$r['path'].'"');
+            
+            $commands[] = 'ssh -p '.$this->getSshPort().' '.$this->getSsh().' "mkdir -p '.$this->getBackupDir().$r['path'].'"';
 
             /*
             ключи:
