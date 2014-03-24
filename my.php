@@ -33,6 +33,10 @@ class my {
     {
         $this->index++;
 
+        if( mb_substr($path,-1) !== '/' ){
+            $path .= '/';
+        }
+
         $this->paths[ $this->index ] = array( 'path' => $this->clear($path) );
 
         return $this;
@@ -109,16 +113,6 @@ class my {
         return $path;
     }
 
-    /**
-     * @var string - полный путь к программе Rsync
-     */
-    private $rsyncPath = '/usr/bin/rsync';
-
-    public function setRsync($path = '')
-    {
-        $this->rsyncPath = $path;
-    }
-
     public function getDate()
     {
         return '`date \+\%Y.\%m.\%d_\%H:\%M:\%S`';
@@ -136,8 +130,8 @@ class my {
             throw new Exception($path);
         }
 
-        if( mb_substr($path,-1) !== '/' ){
-            $path .= '/';
+        if( mb_substr($path,-1) === '/' ){
+            $path = mb_substr($path,0,-1);
         }
 
         $this->backupDir = $path;
@@ -147,21 +141,16 @@ class my {
 
     /**
      * получаем полный путь директории, в которой будет храниться бэкап
-     * @param string $path
      * @return string
      * @throws Exception
      */
-    public function getBackupDir($path = '')
+    public function getBackupDir()
     {
-        if( empty($path) ){
-            throw new Exception($path);
-        }
-
         if( empty($this->backupDir) ){
             throw new Exception();
         }
 
-        return $this->backupDir . $path;
+        return $this->backupDir;
     }
 
 
@@ -193,21 +182,16 @@ class my {
 
     /**
      * получаем полный путь директории, в которой будет храниться различие текущей версии бэкапа по сравнению с предыдующей версией
-     * @param string $path
      * @return string
      * @throws Exception
      */
-    public function getChangesDir($path = '')
+    public function getChangesDir()
     {
-        if( empty($path) ){
-            throw new Exception($path);
-        }
-
         if( empty($this->changesDir) ){
             throw new Exception();
         }
 
-        return $this->changesDir . date('Y/n/j/G').'/'.$path;
+        return $this->changesDir;
     }
 
     /**
@@ -271,6 +255,13 @@ class my {
 
 # скрипт создания бэкапов '.dirname(__FILE__).'/run
 
+# проверим, установлен ли rsync и найдем полный путь к программе rsync
+RSYNCBIN=`which rsync`
+[ ! -x ${RSYNCBIN} ] && {
+	echo "rsync not found"
+	exit 1
+}
+
 # смотрим выполняется ли данное задание
 if [ -f '.dirname(__FILE__).'/running ] ; then
   echo " process already running"
@@ -283,12 +274,18 @@ touch '.dirname(__FILE__).'/running
 # отключаем сжатие данных в SSH
 export RSYNC_RSH="ssh -c arcfour -o Compression=no -x"
 
+CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d/\%H/\%M`"
+
 # запускаем синхронизацию данных';
 
         // формируем список команд
         $commands[] = $this->toLog('"START"');
 
         foreach($this->paths as $r){
+
+            if(empty($r['path'])){
+                continue;
+            }
 
             $commands[] = $this->toLog('"start '.$this->getDate().' '.$r['path'].'"');
 
@@ -305,11 +302,11 @@ export RSYNC_RSH="ssh -c arcfour -o Compression=no -x"
             */
 
             // backup-dir=/куда_сохранять_изменения(на сервере А.Б.С.Д) /что_сохранять Rsync@А.Б.С.Д:/куда сохранять_реальный бэкап
-            $commands[] = $this->rsyncPath . ' --delete-excluded '.$this->getExclude($r['exclude']).' --backup --backup-dir='.$this->getChangesDir($r['path']).' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].'/ '.$this->getSsh().':'.$this->getBackupDir($r['path']);
+            $commands[] = '${RSYNCBIN} --delete-excluded '.$this->getExclude($r['exclude']).' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.$this->getSsh().':'.$this->getBackupDir().$r['path'];
 		
             $commands[] = $this->toLog('$?');// запишем в лог, то что выдаст нам rsync
             
-            $commands[] = $this->toLog('"end '.$this->getDate().' '.$r['path'].'"');
+            $commands[] = $this->toLog('"finish  '.$this->getDate().' '.$r['path'].'"');
 	    }
 
         $commands[] = $this->toLog('"END"');
