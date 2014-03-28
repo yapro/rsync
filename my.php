@@ -242,7 +242,7 @@ class my {
 
     private function toLog($str = '')
     {
-        return 'echo '.$str.' > '.dirname(__FILE__).'/log';
+        return 'echo '.$str.' >> '.dirname(__FILE__).'/log';
     }
 
     /**
