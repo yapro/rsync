@@ -312,7 +312,7 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
 	            ' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.
 	            $this->getSsh().':'.$this->getBackupDir().$r['path'];
 
-	        $commands[] = 'RSYNC_RESULT_CODE = $?';
+	        $commands[] = 'RSYNC_RESULT_CODE=$?';
 		
             $commands[] = $this->toLog('$RSYNC_RESULT_CODE');// запишем в лог, то что выдаст нам rsync
 
