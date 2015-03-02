@@ -240,9 +240,9 @@ class my {
         return $this->sshPort;
     }
 
-    private function toLog($str = '')
+    private function toLog($str = '', $fileName = 'log')
     {
-        return 'echo '.$str.' >> '.dirname(__FILE__).'/log';
+        return 'echo '.$str.' >> '.dirname(__FILE__).'/'.$fileName;
     }
 
     /**
@@ -270,6 +270,9 @@ fi
 
 # создаём файл информирующий нас о том, что данное задание запущено
 touch '.dirname(__FILE__).'/running
+
+# удаляем информацию о последних синхронизациях
+echo > '.dirname(__FILE__).'/results
 
 # отключаем сжатие данных в SSH
 export RSYNC_RSH="ssh -c arcfour -o Compression=no -x"
@@ -307,6 +310,8 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
             $commands[] = '${RSYNCBIN} --delete-excluded '.$this->getExclude($r['exclude']).' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.$this->getSsh().':'.$this->getBackupDir().$r['path'];
 		
             $commands[] = $this->toLog('$?');// запишем в лог, то что выдаст нам rsync
+
+	        $commands[] = $this->toLog('$?', 'results');// запишем результаты синхронизации (0 - все ок)
             
             $commands[] = $this->toLog('"finish  '.$this->getDate().' '.$r['path'].'"');
 	    }
