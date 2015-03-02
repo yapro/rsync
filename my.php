@@ -304,14 +304,19 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
             просто не обновится в бэкапе.
             --delete-excluded - удалять части которые уже есть на стороне бэкапа, но появились в списке исключения
             --backup - говорим, что делаем бэкап
+            --bwlimit=123456 - скорость копирования файлов кбайт/сек
             */
 
             // backup-dir=/куда_сохранять_изменения(на сервере А.Б.С.Д) /что_сохранять Rsync@А.Б.С.Д:/куда сохранять_реальный бэкап
-            $commands[] = '${RSYNCBIN} --delete-excluded '.$this->getExclude($r['exclude']).' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.$this->getSsh().':'.$this->getBackupDir().$r['path'];
-		
-            $commands[] = $this->toLog('$?');// запишем в лог, то что выдаст нам rsync
+            $commands[] = '${RSYNCBIN} --bwlimit=123456 --delete-excluded '.$this->getExclude($r['exclude']).
+	            ' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.
+	            $this->getSsh().':'.$this->getBackupDir().$r['path'];
 
-	        $commands[] = $this->toLog('$?', 'results');// запишем результаты синхронизации (0 - все ок)
+	        $commands[] = 'RSYNC_RESULT_CODE = $?';
+		
+            $commands[] = $this->toLog('$RSYNC_RESULT_CODE');// запишем в лог, то что выдаст нам rsync
+
+	        $commands[] = $this->toLog('$RSYNC_RESULT_CODE', 'results');// запишем результаты синхронизации (0 - все ок)
             
             $commands[] = $this->toLog('"finish  '.$this->getDate().' '.$r['path'].'"');
 	    }
