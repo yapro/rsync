@@ -25,6 +25,19 @@ class my {
     private $index = 0;
 
     /**
+     * @var string - действие синхронизации - вытолкнуть бэкап на удаленный сервер
+     */
+    private $action = 'push';
+
+    /**
+     * устанавливает действие синхронизации - стянуть бэкап с удаленнго сервера
+     */
+    public function setActionPull()
+    {
+        $this->action = 'pull';
+    }
+
+    /**
      * добавляет в список директорию(файл) которую нужно забэкапить
      * @param string $path - директория(файл) которую нужно забэкапить
      * @return $this
@@ -84,7 +97,7 @@ class my {
         }
 
         if( !empty($this->exclude) ){
-             $array[] = $this->exclude;
+            $array[] = $this->exclude;
         }
 
         $paths = '';
@@ -291,8 +304,12 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
             }
 
             $commands[] = $this->toLog('"start '.$this->getDate().' '.$r['path'].'"');
-            
-            $commands[] = 'ssh -p '.$this->getSshPort().' '.$this->getSsh().' "mkdir -p '.$this->getBackupDir().$r['path'].'"';
+
+            $mkDir = 'mkdir -p ' . $this->getBackupDir() . $r['path'];
+            if ($this->action === 'push') {
+                $mkDir = 'ssh -p ' . $this->getSshPort() . ' ' . $this->getSsh() . ' "' . $mkDir . '"';
+            }
+            $commands[] = $mkDir;
 
             /*
             ключи:
@@ -308,18 +325,24 @@ CHANGES_DIR="--backup --backup-dir='.$this->getChangesDir().'`date \+\%Y/\%m/\%d
             */
 
             // backup-dir=/куда_сохранять_изменения(на сервере А.Б.С.Д) /что_сохранять Rsync@А.Б.С.Д:/куда сохранять_реальный бэкап
-            $commands[] = '${RSYNCBIN} --bwlimit=123456 --delete-excluded '.$this->getExclude($r['exclude']).
-	            ' $CHANGES_DIR'.$r['path'].' --delete -e \'ssh -p '.$this->getSshPort().'\' -az '.$r['path'].' '.
-	            $this->getSsh().':'.$this->getBackupDir().$r['path'];
+            $cmd = '${RSYNCBIN} --bwlimit=123456 --delete-excluded ' . $this->getExclude($r['exclude']) .
+                ' $CHANGES_DIR' . $r['path'] . ' --delete -e \'ssh -p ' . $this->getSshPort() . '\' -az ';
 
-	        $commands[] = 'RSYNC_RESULT_CODE=$?';
-		
+            if ($this->action === 'push') {
+                $cmd .= $r['path'] . ' ' . $this->getSsh() . ':' . $this->getBackupDir() . $r['path'];
+            } else {
+                $cmd .= $this->getSsh() . ':' . $r['path'] . ' ' . $this->getBackupDir() . $r['path'];
+            }
+            $commands[] = $cmd;
+
+            $commands[] = 'RSYNC_RESULT_CODE=$?';
+
             $commands[] = $this->toLog('$RSYNC_RESULT_CODE');// запишем в лог, то что выдаст нам rsync
 
-	        $commands[] = $this->toLog('$RSYNC_RESULT_CODE', 'results');// запишем результаты синхронизации (0 - все ок)
-            
+            $commands[] = $this->toLog('$RSYNC_RESULT_CODE', 'results');// запишем результаты синхронизации (0 - все ок)
+
             $commands[] = $this->toLog('"finish  '.$this->getDate().' '.$r['path'].'"');
-	    }
+        }
 
         $commands[] = $this->toLog('"END"');
 
